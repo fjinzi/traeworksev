@@ -5,8 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -18,12 +20,45 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @Override
     public void run(String... args) {
         try {
             fixUserTable();
+            initAdminUser();
         } catch (Exception e) {
             log.error("数据库初始化失败", e);
+        }
+    }
+
+    private void initAdminUser() {
+        try {
+            String checkAdminSql = "SELECT COUNT(*) FROM sys_user WHERE username = 'admin' AND is_deleted = 0";
+            Integer count = jdbcTemplate.queryForObject(checkAdminSql, Integer.class);
+
+            if (count != null && count > 0) {
+                log.info("管理员用户已存在，跳过初始化");
+                return;
+            }
+
+            String encodedPassword = passwordEncoder.encode("admin123");
+            String insertAdminSql = "INSERT INTO sys_user (username, password, nickname, role_type, create_time, update_time, is_deleted, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+            jdbcTemplate.update(insertAdminSql,
+                "admin",
+                encodedPassword,
+                "系统管理员",
+                1,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                0,
+                1
+            );
+
+            log.info("管理员用户初始化成功，用户名: admin, 密码: admin123");
+        } catch (Exception e) {
+            log.error("管理员用户初始化失败", e);
         }
     }
 

@@ -12,7 +12,13 @@ const routes = [
     path: '/admin',
     name: 'Admin',
     component: () => import('@/views/ProductAdmin.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/user-admin',
+    name: 'UserAdmin',
+    component: () => import('@/views/UserAdmin.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/login',
@@ -29,7 +35,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
-  
+
   if (userStore.token && !userStore.user) {
     await userStore.initUser()
   }
@@ -37,6 +43,14 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
     if (!userStore.isLoggedIn) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!userStore.isAdmin) {
+      alert('您没有权限访问此页面')
+      next({ name: 'Seckill' })
       return
     }
   }
