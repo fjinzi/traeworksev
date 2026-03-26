@@ -38,9 +38,16 @@ public class AdminInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        Integer roleType = jwtUtil.getRoleType(token);
+        if (roleType == null || roleType != 1) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"success\":false,\"message\":\"无权限，需要管理员权限\"}");
+            return false;
+        }
+
         request.setAttribute("userId", jwtUtil.getUserId(token));
         request.setAttribute("username", jwtUtil.getUsername(token));
-        request.setAttribute("roleType", jwtUtil.getRoleType(token));
+        request.setAttribute("roleType", roleType);
         request.setAttribute("token", token);
 
         return true;

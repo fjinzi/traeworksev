@@ -12,7 +12,13 @@ const routes = [
     path: '/admin',
     name: 'Admin',
     component: () => import('@/views/ProductAdmin.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/user-admin',
+    name: 'UserAdmin',
+    component: () => import('@/views/UserAdmin.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/login',
@@ -37,6 +43,11 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
     if (!userStore.isLoggedIn) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+    
+    if (to.meta.requiresAdmin && !userStore.isAdmin) {
+      next({ name: 'Seckill' })
       return
     }
   }

@@ -4,6 +4,7 @@
       <div class="nav-left">
         <router-link to="/" class="nav-link">秒杀活动</router-link>
         <router-link v-if="userStore.isLoggedIn" to="/admin" class="nav-link">商品管理</router-link>
+        <router-link v-if="userStore.isAdmin" to="/user-admin" class="nav-link">用户管理</router-link>
       </div>
       <div class="nav-right">
         <template v-if="userStore.isLoggedIn">
