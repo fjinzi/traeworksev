@@ -1,5 +1,6 @@
 package com.seckill.config;
 
+import com.seckill.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -18,10 +19,14 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private UserService userService;
+
     @Override
     public void run(String... args) {
         try {
             fixUserTable();
+            userService.initAdminUser();
         } catch (Exception e) {
             log.error("数据库初始化失败", e);
         }
@@ -36,6 +41,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
             boolean hasRoleType = false;
             boolean hasRole = false;
+            boolean hasStatus = false;
             
             log.info("检查 sys_user 表结构，发现以下列:");
             for (Map<String, Object> col : columns) {
@@ -46,6 +52,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 }
                 if ("role".equals(colName)) {
                     hasRole = true;
+                }
+                if ("status".equals(colName)) {
+                    hasStatus = true;
                 }
             }
 
@@ -63,9 +72,18 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型: 0-普通用户, 1-管理员' AFTER phone"
                 );
                 log.info("role_type 列添加完成");
-            } else {
-                log.info("sys_user 表结构正常");
             }
+
+            if (!hasStatus) {
+                log.info("添加缺失的 status 列");
+                jdbcTemplate.update(
+                    "ALTER TABLE sys_user ADD COLUMN status " +
+                    "TINYINT DEFAULT 1 COMMENT '状态: 0-禁用, 1-启用' AFTER is_deleted"
+                );
+                log.info("status 列添加完成");
+            }
+            
+            log.info("sys_user 表结构正常");
         } catch (Exception e) {
             log.warn("检查表结构时出错: {}", e.getMessage());
             try {
@@ -82,6 +100,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
                     "update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
                     "is_deleted TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除: 0-未删除, 1-已删除'," +
+                    "status TINYINT DEFAULT 1 COMMENT '状态: 0-禁用, 1-启用'," +
                     "PRIMARY KEY (id)," +
                     "UNIQUE INDEX uk_username (username)," +
                     "INDEX idx_role_type (role_type)" +
