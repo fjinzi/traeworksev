@@ -1,6 +1,8 @@
 package com.seckill.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.seckill.dto.UserAddDTO;
 import com.seckill.dto.UserInfoDTO;
 import com.seckill.dto.UserLoginDTO;
 import com.seckill.dto.UserRegisterDTO;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -108,5 +111,69 @@ public class UserServiceImpl implements UserService {
         dto.setRoleType(user.getRoleType());
         dto.setToken(token);
         return dto;
+    }
+
+    @Override
+    public List<User> getUserList() {
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getIsDeleted, 0);
+        queryWrapper.orderByDesc(User::getCreateTime);
+        return userMapper.selectList(queryWrapper);
+    }
+
+    @Override
+    public UserInfoDTO addUser(UserAddDTO dto) {
+        log.info("管理员添加用户：username={}", dto.getUsername());
+        
+        if (checkUsernameExists(dto.getUsername())) {
+            log.warn("用户名已存在：username={}", dto.getUsername());
+            throw new RuntimeException("用户名已存在");
+        }
+
+        User user = new User();
+        user.setUsername(dto.getUsername());
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+        user.setPassword(encodedPassword);
+        user.setNickname(dto.getNickname() != null ? dto.getNickname() : dto.getUsername());
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setRoleType(dto.getRoleType() != null ? dto.getRoleType() : 0);
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+        user.setIsDeleted(0);
+
+        userMapper.insert(user);
+        log.info("管理员添加用户成功，userId={}", user.getId());
+
+        return buildUserInfoDTO(user, null);
+    }
+
+    @Override
+    public boolean deleteUser(Long userId) {
+        log.info("逻辑删除用户：userId={}", userId);
+        
+        User user = userMapper.selectById(userId);
+        if (user == null || user.getIsDeleted() == 1) {
+            log.warn("用户不存在或已删除：userId={}", userId);
+            return false;
+        }
+
+        LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(User::getId, userId);
+        updateWrapper.set(User::getIsDeleted, 1);
+        updateWrapper.set(User::getUpdateTime, LocalDateTime.now());
+        
+        int result = userMapper.update(null, updateWrapper);
+        log.info("用户逻辑删除结果：userId={}, result={}", userId, result);
+        return result > 0;
+    }
+
+    @Override
+    public User getUserById(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user != null && user.getIsDeleted() == 0) {
+            return user;
+        }
+        return null;
     }
 }

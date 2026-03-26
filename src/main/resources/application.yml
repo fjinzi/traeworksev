@@ -19,7 +19,7 @@ spring:
 
   data:
     redis:
-      host: 192.168.124.132
+      host: 192.168.124.198
       port: 6379
       database: 0
 
